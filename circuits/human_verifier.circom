@@ -1,20 +1,12 @@
-pragma circom 2.0.0;
+# 1. Compile the circuit you wrote earlier to WebAssembly
+circom circuits/human_verifier.circom --wasm --r1cs -o circuits/
 
-template HumanVerifier() {
-    // 1. The Private Data (This stays on the user's phone, NEVER sent to the server)
-    signal input privateEnclaveKey; 
-    
-    // 2. The Public Data (The random "challenge" sent by your server to prevent replay attacks)
-    signal input publicChallenge;   
-    
-    // 3. The Output (The mathematical proof result)
-    signal output proofHash;              
+# 2. Start the "Trusted Setup" (Downloads the mathematical curve)
+npx snarkjs powersoftau new bn128 12 pot12_0000.ptau -v
+npx snarkjs powersoftau contribute pot12_0000.ptau pot12_0001.ptau --name="First contribution" -v
 
-    // 4. The Core Logic: We mathematically bind the secret key to the server's challenge.
-    // (For this MVP, we use simple multiplication. In production, this would be a SHA256 or MiMC hash).
-    proofHash <== privateEnclaveKey * publicChallenge;
-}
+# 3. Generate the Proving Key (.zkey) for the frontend
+npx snarkjs groth16 setup circuits/human_verifier.r1cs pot12_0001.ptau circuit_final.zkey
 
-// We explicitly tell the system that ONLY the challenge is public.
-// The privateEnclaveKey remains mathematically hidden.
-component main {public [publicChallenge]} = HumanVerifier();
+# 4. Export the Verification Key (.json) for your backend
+npx snarkjs zkey export verificationkey circuit_final.zkey verification_key.json
