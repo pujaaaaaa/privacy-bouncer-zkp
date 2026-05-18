@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy-First Digital Bouncer</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: #1e293b; padding: 2.5rem; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); max-width: 500px; width: 100%; border: 1px solid #334155; }
+        h1 { font-size: 1.5rem; margin-top: 0; color: #38bdf8; display: flex; align-items: center; gap: 10px; }
+        p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; }
+        button { background: #0284c7; color: white; border: none; padding: 0.75rem 1.5rem; font-size: 1rem; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; transition: background 0.2s; margin-top: 1rem; }
+        button:hover { background: #0369a1; }
+        .console { background: #020617; padding: 1rem; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; margin-top: 1.5rem; border: 1px solid #1e293b; min-height: 80px; white-space: pre-wrap; word-break: break-all; }
+        .status-success { color: #4ade80; }
+        .status-fail { color: #f87171; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>🛡️ Privacy-First Digital Bouncer</h1>
+        <p>This dashboard acts as a user's mobile device. Clicking the button below simulates your phone's hardware generating a dynamic, cryptographic <strong>Zero-Knowledge Proof</strong> to prove you are a human without sharing identity data.</p>
+        
+        <button onclick="generateAndVerifyProof()">Generate & Submit Human Proof</button>
+        
+        <div class="console" id="outputLog">System Idle. Awaiting proof generation...</div>
+    </div>
+
+    <script>
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);                    
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function generateAndVerifyProof() {
+            const log = document.getElementById('outputLog');
+            log.innerHTML = "Creating mathematical proof enclave parameters...\n";
+            
+            const challenge = "session-challenge-" + Math.random().toString(36).substring(7);
+            const trustedKeyIdentifier = "MAANG_TRUSTED_ENCLAVE_ROOT_KEY";
+            
+            log.innerHTML += "Computing dynamic SHA-256 ZKP hash token...\n";
+            const proof = await sha256(challenge + trustedKeyIdentifier);
+            
+            log.innerHTML += `Sending Proof: ${proof.substring(0, 24)}...\n\n`;
+
+            try {
+                const response = await fetch('/api/verify-human', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ challenge, trustedKeyIdentifier, proof })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    log.innerHTML += `<span class="status-success">[SUCCESS 200 OK]</span>\n${data.message}`;
+                } else {
+                    log.innerHTML += `<span class="status-fail">[REJECTED]</span>\n${data.message}`;
+                }
+            } catch (err) {
+                log.innerHTML += `<span class="status-fail">[ERROR]</span> Could not reach backend server.`;
+            }
+        }
+    </script>
+</body>
+</html>
